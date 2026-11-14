@@ -14,7 +14,10 @@ public struct RelayVSROptions: Sendable {
     /// Reference interval + 1 (upstream `--window-size`): a keyframe every `windowSize − 1` frames.
     public var windowSize = 16
     public var seed: UInt64 = 42
-    public init() {}
+    public init(windowSize: Int = 16, seed: UInt64 = 42) {
+        self.windowSize = windowSize
+        self.seed = seed
+    }
 }
 
 /// What the gates can inject and observe; nil members cost nothing.
@@ -34,9 +37,9 @@ public struct RelayVSRStageTimes: Sendable {
 public final class RelayVSRPipeline {
     public let generator: RelayVSRGenerator
     public let decoder: RelayVSRDecoder
-    /// Wall seconds per stage of the last `run` when `profile` is on (each stage is evaluated before the next).
+    /// Wall seconds per stage of the last stream when `profile` is on (each stage is evaluated before the next).
     public var profile = false
-    public private(set) var stageTimes = RelayVSRStageTimes()
+    public internal(set) var stageTimes = RelayVSRStageTimes()
 
     public init(generator: RelayVSRGenerator, decoder: RelayVSRDecoder) {
         self.generator = generator
@@ -54,82 +57,126 @@ public final class RelayVSRPipeline {
         return ph == 0 && pw == 0 ? x : padded(x, widths: [0, .init((0, ph)), .init((0, pw)), 0], mode: .edge)
     }
 
-    private func timed<R>(_ keyPath: WritableKeyPath<RelayVSRStageTimes, Double>, _ body: () -> R) -> R {
-        guard profile else { return body() }
-        let t0 = DispatchTime.now().uptimeNanoseconds
-        let r = body()
-        stageTimes[keyPath: keyPath] += Double(DispatchTime.now().uptimeNanoseconds - t0) / 1e9
-        return r
-    }
-
     /// Run a clip. `frames`: LR frames (H, W, 3), values 0…255, constant size. `emit(index, frame)` receives every
     /// output frame (4H, 4W, 3) in [−1, 1] (unclamped), in order, as soon as its interval is decoded.
     public func run<S: Sequence>(frames: S, options: RelayVSROptions = .init(), hooks: RelayVSRHooks = .init(),
                                  emit: (Int, MLXArray) throws -> Void) rethrows where S.Element == MLXArray {
-        precondition(options.windowSize >= 2, "windowSize must be at least 2")
-        stageTimes = RelayVSRStageTimes()
-        var iterator = frames.makeIterator()
-        guard let first = iterator.next() else { return }
-        let (h, w) = (first.dim(0), first.dim(1))
-        let state = generator.makeState()
-        var key = MLXRandom.key(options.seed)
-        var ordinal = 0
-
-        func keyframe(_ frame: MLXArray) -> RelayVSRPreparedCondition {
-            let native = Self.prepareLR(frame)
-            let latent: MLXArray = timed(\.generator) {
-                let up = RelayVSRResample.upsample4(native, cubic: false)                  // bilinear ×4
-                let shape = [1, up.dim(1) / 16, up.dim(2) / 16, generator.config.inChannels]
-                let noise: MLXArray
-                if let inject = hooks.noise {
-                    noise = inject(ordinal, shape)
-                } else {
-                    let (k1, k2) = MLXRandom.split(key: key)
-                    key = k2
-                    noise = MLXRandom.normal(shape, key: k1)
-                }
-                var taps: RelayVSRTaps? = nil
-                let pred = generator.step(noise: noise, lq: up, state: state, taps: &taps)
-                // one Euler step of the flow from σ = 1 to 0, in fp32 (upstream: scheduler.step(pred.float(), …))
-                let z = noise.asType(.float32) - pred.asType(.float32)
-                eval(z)
-                return z
-            }
-            hooks.latent?(ordinal, latent)
-            ordinal += 1
-            stageTimes.keyframes += 1
-            return timed(\.condition) { decoder.prepareCondition(latent) }
-        }
-
+        let stream = RelayVSRStream(pipeline: self, options: options, hooks: hooks)
         var index = 0
-        var start = (index: 0, frame: first)
-        var startPrepared = keyframe(first)
-        var firstWindow = true
-        while true {
-            var window = [start]
-            while window.count < options.windowSize, let f = iterator.next() {
-                index += 1
-                precondition(f.dim(0) == h && f.dim(1) == w, "frames must keep a constant size")
-                window.append((index, f))
-            }
-            if window.count == 1 && !firstWindow { return }
-            let end = window[window.count - 1]
-            let endPrepared = end.index == start.index ? startPrepared : keyframe(end.frame)
-            var dec = decoder.beginStream(start: startPrepared, end: endPrepared)
-            for (offset, p) in window.enumerated() {
-                let out: MLXArray = timed(\.decoder) {
-                    let o = decoder.decodeStep(Self.prepareLR(p.frame), state: &dec)[0, 0 ..< (h * 4), 0 ..< (w * 4)]
-                    eval(o)
-                    return o
-                }
-                stageTimes.decodes += 1
-                // the overlap frame must update the history, but has already been emitted
-                if firstWindow || offset > 0 { try emit(p.index, out) }
-            }
-            firstWindow = false
-            start = end
-            startPrepared = endPrepared
-            if window.count < options.windowSize { return }
+        for f in frames {
+            for out in stream.push(f) { try emit(index, out); index += 1 }
         }
+        for out in stream.finish() { try emit(index, out); index += 1 }
+    }
+}
+
+/// Frame-in / frames-out form of the driver: `push` returns the output frames that became decodable (none until an
+/// interval's far endpoint arrives, then the whole interval), `finish` drains the last, partial interval. Outputs
+/// are (4H, 4W, 3) in [−1, 1], in input order; the lag is at most `windowSize − 1` frames.
+public final class RelayVSRStream {
+    let pipeline: RelayVSRPipeline
+    let options: RelayVSROptions
+    let hooks: RelayVSRHooks
+    private let state: RelayVSRGeneratorState
+    private var key: MLXArray
+    private var ordinal = 0
+    private var size: (h: Int, w: Int)?
+    /// The open interval: its start frame first (the previous interval's end), then the frames since.
+    private var window: [MLXArray] = []
+    private var startPrepared: RelayVSRPreparedCondition?
+    private var firstWindow = true
+    public private(set) var pushed = 0, emitted = 0
+
+    public init(pipeline: RelayVSRPipeline, options: RelayVSROptions = .init(), hooks: RelayVSRHooks = .init()) {
+        precondition(options.windowSize >= 2, "windowSize must be at least 2")
+        self.pipeline = pipeline
+        self.options = options
+        self.hooks = hooks
+        state = pipeline.generator.makeState()
+        key = MLXRandom.key(options.seed)
+        pipeline.stageTimes = RelayVSRStageTimes()
+    }
+
+    private func timed<R>(_ keyPath: WritableKeyPath<RelayVSRStageTimes, Double>, _ body: () -> R) -> R {
+        guard pipeline.profile else { return body() }
+        let t0 = DispatchTime.now().uptimeNanoseconds
+        let r = body()
+        pipeline.stageTimes[keyPath: keyPath] += Double(DispatchTime.now().uptimeNanoseconds - t0) / 1e9
+        return r
+    }
+
+    /// One keyframe: bilinear ×4 → the one-step generator → reference latent → the decoder's persistent K/V.
+    private func keyframe(_ frame: MLXArray) -> RelayVSRPreparedCondition {
+        let gen = pipeline.generator
+        let native = RelayVSRPipeline.prepareLR(frame)
+        let latent: MLXArray = timed(\.generator) {
+            let up = RelayVSRResample.upsample4(native, cubic: false)
+            let shape = [1, up.dim(1) / 16, up.dim(2) / 16, gen.config.inChannels]
+            let noise: MLXArray
+            if let inject = hooks.noise {
+                noise = inject(ordinal, shape)
+            } else {
+                let (k1, k2) = MLXRandom.split(key: key)
+                key = k2
+                noise = MLXRandom.normal(shape, key: k1)
+            }
+            var taps: RelayVSRTaps? = nil
+            let pred = gen.step(noise: noise, lq: up, state: state, taps: &taps)
+            // one Euler step of the flow from σ = 1 to 0, in fp32 (upstream: scheduler.step(pred.float(), …))
+            let z = noise.asType(.float32) - pred.asType(.float32)
+            eval(z)
+            return z
+        }
+        hooks.latent?(ordinal, latent)
+        ordinal += 1
+        pipeline.stageTimes.keyframes += 1
+        return timed(\.condition) { pipeline.decoder.prepareCondition(latent) }
+    }
+
+    /// (H, W, 3), values 0…255.
+    public func push(_ frame: MLXArray) -> [MLXArray] {
+        if let size {
+            precondition(frame.dim(0) == size.h && frame.dim(1) == size.w, "frames must keep a constant size")
+        } else {
+            size = (frame.dim(0), frame.dim(1))
+        }
+        pushed += 1
+        if startPrepared == nil {
+            // the first reference can be computed while the producer collects lookahead
+            startPrepared = keyframe(frame)
+            window = [frame]
+            return []
+        }
+        window.append(frame)
+        return window.count == options.windowSize ? decodeWindow() : []
+    }
+
+    /// Drain the open interval (shorter than a full window, or the clip's only frame).
+    public func finish() -> [MLXArray] {
+        guard startPrepared != nil, !(window.count == 1 && !firstWindow) else { return [] }
+        return decodeWindow()
+    }
+
+    private func decodeWindow() -> [MLXArray] {
+        guard let start = startPrepared, let size else { return [] }
+        let dec = pipeline.decoder
+        let end = window.count == 1 ? start : keyframe(window[window.count - 1])
+        var st = dec.beginStream(start: start, end: end)
+        var outs: [MLXArray] = []
+        for (offset, f) in window.enumerated() {
+            let out: MLXArray = timed(\.decoder) {
+                let o = dec.decodeStep(RelayVSRPipeline.prepareLR(f), state: &st)[0, 0 ..< (size.h * 4), 0 ..< (size.w * 4)]
+                eval(o)
+                return o
+            }
+            pipeline.stageTimes.decodes += 1
+            // the overlap frame must update the history, but has already been emitted
+            if firstWindow || offset > 0 { outs.append(out) }
+        }
+        firstWindow = false
+        window = [window[window.count - 1]]
+        startPrepared = end
+        emitted += outs.count
+        return outs
     }
 }

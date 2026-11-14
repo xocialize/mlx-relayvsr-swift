@@ -5,6 +5,7 @@
 //   relayvsr-smoke run <lrFramesDir> <outDir> <weightsDir> [--dtype bf16|fp32] [--dec-dtype fp16|bf16|fp32]
 //                      [--window 16] [--limit N] [--seed S] [--profile] [--cache-mb N] [--repeat N]
 //                      (defaults: generator bf16, decoder fp16 — the production lane)
+//   relayvsr-smoke engine <in.mov|mp4> <out.mp4> <laneDir | --store storeRoot> [--scale 2|4] [--fp32] [--window W]
 import Foundation
 import MLX
 import RelayVSRMLX
@@ -49,8 +50,10 @@ do {
                       limit: flag("--limit", args).flatMap(Int.init), options: opts,
                       profile: args.contains("--profile"), cacheMB: flag("--cache-mb", args).flatMap(Int.init),
                       repeats: flag("--repeat", args).flatMap(Int.init) ?? 1)
+    case "engine":   // top-level await — never block the main thread on a semaphore (it deadlocks the engine)
+        try await runEngine(args)
     default:
-        note("usage: relayvsr-smoke s0|s1|run … (see Sources/Smoke/main.swift)")
+        note("usage: relayvsr-smoke s0|s1|run|engine … (see Sources/Smoke/main.swift)")
         exit(2)
     }
 } catch {
