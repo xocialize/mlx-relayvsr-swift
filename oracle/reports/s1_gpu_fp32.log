@@ -1,0 +1,68 @@
+golden: kopperx/RelayVSR@e856773  64x192 × 9 frames, window 3, keyframes 0,2,4,6,8, torch 2.15.0
+resamplers
+  bicubic ×4 maxAbs 2.384e-07  ref|max| 1.183e+00  rel 2.016e-07  psnr  150.2 dB
+generator constants
+  temb maxAbs 7.898e-07  ref|max| 9.245e-01  rel 8.543e-07  psnr  140.5 dB
+  timestep_proj maxAbs 4.768e-07  ref|max| 2.535e+00  rel 1.881e-07  psnr  152.9 dB
+  prompt projection maxAbs 5.364e-07  ref|max| 1.214e+00  rel 4.419e-07  psnr  156.4 dB
+  cross K (block 0) maxAbs 1.025e-05  ref|max| 6.514e+00  rel 1.574e-06  psnr  134.3 dB
+  cross V (block 0) maxAbs 1.311e-06  ref|max| 2.152e+00  rel 6.093e-07  psnr  151.8 dB
+generator: 5 keyframes, injected noise
+  kf0 lq_proj maxAbs 1.788e-06  ref|max| 2.048e+00  rel 8.731e-07  psnr  143.7 dB
+  kf0 block 0 maxAbs 4.578e-05  ref|max| 8.524e+01  rel 5.370e-07  psnr  166.3 dB
+  kf0 block 1 maxAbs 4.578e-05  ref|max| 6.102e+01  rel 7.502e-07  psnr  161.5 dB
+  kf0 block 29 maxAbs 1.526e-04  ref|max| 8.799e+01  rel 1.734e-06  psnr  141.9 dB
+  kf0 pred maxAbs 1.860e-05  ref|max| 5.588e+00  rel 3.328e-06  psnr  126.1 dB
+  latent 0 maxAbs 1.860e-05  ref|max| 3.130e+00  rel 5.941e-06  psnr  121.1 dB
+  latent 1 maxAbs 2.038e-05  ref|max| 3.291e+00  rel 6.194e-06  psnr  121.8 dB
+  latent 2 maxAbs 6.412e-05  ref|max| 3.320e+00  rel 1.932e-05  psnr  120.0 dB
+  latent 3 maxAbs 1.937e-05  ref|max| 3.350e+00  rel 5.783e-06  psnr  122.2 dB
+  kf4 lq_proj maxAbs 1.311e-06  ref|max| 2.858e+00  rel 4.588e-07  psnr  146.6 dB
+  kf4 block 0 maxAbs 4.578e-05  ref|max| 8.110e+01  rel 5.644e-07  psnr  166.8 dB
+  kf4 block 1 maxAbs 3.815e-05  ref|max| 5.914e+01  rel 6.450e-07  psnr  162.3 dB
+  kf4 block 29 maxAbs 2.371e-04  ref|max| 8.809e+01  rel 2.692e-06  psnr  136.7 dB
+  kf4 pred maxAbs 5.443e-05  ref|max| 5.976e+00  rel 9.107e-06  psnr  123.6 dB
+  latent 4 maxAbs 5.442e-05  ref|max| 3.242e+00  rel 1.679e-05  psnr  118.3 dB
+decoder: reference priming (golden latent 0)
+  cond tokens maxAbs 1.431e-06  ref|max| 4.590e+00  rel 3.117e-07  psnr  149.2 dB
+  cond b0 key maxAbs 5.245e-06  ref|max| 8.218e+00  rel 6.383e-07  psnr  145.1 dB
+  cond b0 value maxAbs 1.669e-06  ref|max| 5.132e+00  rel 3.252e-07  psnr  148.2 dB
+  cond b9 key maxAbs 3.815e-06  ref|max| 4.832e+00  rel 7.895e-07  psnr  142.5 dB
+  cond b9 value maxAbs 3.338e-06  ref|max| 3.804e+00  rel 8.775e-07  psnr  142.5 dB
+  cond hidden maxAbs 3.791e-05  ref|max| 1.972e+01  rel 1.923e-06  psnr  137.7 dB
+decoder: intervals 0 and 1 (golden latents)
+  w0f0 tokens maxAbs 3.099e-06  ref|max| 5.101e+00  rel 6.076e-07  psnr  141.4 dB
+  w0f0 block 0 maxAbs 5.344e-05  ref|max| 3.474e+00  rel 1.538e-05  psnr  123.5 dB
+  w0f0 block 9 maxAbs 1.316e-04  ref|max| 1.847e+01  rel 7.126e-06  psnr  131.2 dB
+  w0f0 out maxAbs 1.056e-05  ref|max| 2.119e+00  rel 4.985e-06  psnr  133.9 dB
+  w0f1 tokens maxAbs 2.861e-06  ref|max| 5.081e+00  rel 5.631e-07  psnr  141.4 dB
+  w0f1 block 0 maxAbs 4.172e-05  ref|max| 3.474e+00  rel 1.201e-05  psnr  124.8 dB
+  w0f1 block 9 maxAbs 1.583e-04  ref|max| 1.861e+01  rel 8.509e-06  psnr  128.8 dB
+  w0f1 out maxAbs 1.323e-05  ref|max| 1.780e+00  rel 7.433e-06  psnr  129.8 dB
+  w0f2 tokens maxAbs 3.099e-06  ref|max| 5.185e+00  rel 5.978e-07  psnr  141.5 dB
+  w0f2 block 0 maxAbs 4.497e-05  ref|max| 3.502e+00  rel 1.284e-05  psnr  124.0 dB
+  w0f2 block 9 maxAbs 8.965e-05  ref|max| 1.932e+01  rel 4.639e-06  psnr  131.1 dB
+  w0f2 out maxAbs 8.553e-06  ref|max| 1.841e+00  rel 4.647e-06  psnr  132.1 dB
+  w1f0 tokens maxAbs 3.099e-06  ref|max| 5.185e+00  rel 5.978e-07  psnr  141.5 dB
+  w1f0 block 0 maxAbs 4.375e-05  ref|max| 3.497e+00  rel 1.251e-05  psnr  124.1 dB
+  w1f0 block 9 maxAbs 9.966e-05  ref|max| 1.912e+01  rel 5.211e-06  psnr  131.5 dB
+  w1f1 tokens maxAbs 3.099e-06  ref|max| 5.207e+00  rel 5.953e-07  psnr  141.6 dB
+  w1f1 block 0 maxAbs 2.998e-05  ref|max| 3.489e+00  rel 8.592e-06  psnr  125.3 dB
+  w1f1 block 9 maxAbs 1.445e-04  ref|max| 1.592e+01  rel 9.077e-06  psnr  127.6 dB
+  w1f1 out maxAbs 1.314e-05  ref|max| 1.576e+00  rel 8.339e-06  psnr  129.3 dB
+  w1f2 tokens maxAbs 3.338e-06  ref|max| 5.152e+00  rel 6.479e-07  psnr  141.5 dB
+  w1f2 block 0 maxAbs 5.281e-05  ref|max| 3.463e+00  rel 1.525e-05  psnr  124.6 dB
+  w1f2 block 9 maxAbs 8.893e-05  ref|max| 1.986e+01  rel 4.477e-06  psnr  132.3 dB
+  w1f2 out maxAbs 8.166e-06  ref|max| 1.949e+00  rel 4.190e-06  psnr  133.3 dB
+E2E: the whole stream from (lr, injected noise)
+  e2e frame 0 maxAbs 2.194e-05  ref|max| 2.119e+00  rel 1.035e-05  psnr  124.7 dB
+  e2e frame 1 maxAbs 1.901e-05  ref|max| 1.780e+00  rel 1.068e-05  psnr  126.9 dB
+  e2e frame 2 maxAbs 2.235e-05  ref|max| 1.841e+00  rel 1.214e-05  psnr  124.3 dB
+  e2e frame 3 maxAbs 1.407e-05  ref|max| 1.576e+00  rel 8.925e-06  psnr  125.8 dB
+  e2e frame 4 maxAbs 3.007e-05  ref|max| 1.949e+00  rel 1.543e-05  psnr  123.6 dB
+  e2e frame 5 maxAbs 9.280e-05  ref|max| 1.607e+00  rel 5.774e-05  psnr  122.7 dB
+  e2e frame 6 maxAbs 2.173e-05  ref|max| 1.764e+00  rel 1.232e-05  psnr  123.8 dB
+  e2e frame 7 maxAbs 2.605e-05  ref|max| 1.604e+00  rel 1.624e-05  psnr  126.7 dB
+  e2e frame 8 maxAbs 3.810e-05  ref|max| 1.838e+00  rel 2.073e-05  psnr  123.5 dB
+  E2E worst frame PSNR 122.7 dB (peak = the frame's own max)
+S1: PASS
