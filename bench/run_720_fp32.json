@@ -1,0 +1,28 @@
+{
+  "cache_limit_mb" : -1,
+  "dtypes" : "generator float32 decoder float32",
+  "first_frame_s" : 1.583915959,
+  "frames_in" : 49,
+  "frames_out" : 49,
+  "gpu_util_before_pct" : 98,
+  "keyframes" : 5,
+  "load_s" : 2.0583473749999999,
+  "lr" : "320x192",
+  "mlx_peak_gb" : 25.029708931999998,
+  "nan_values" : 0,
+  "peak_phys_gb" : 28.238185391999998,
+  "phys_before_run_gb" : 22.978494951999998,
+  "repeat" : 3,
+  "run_s" : 5.0541787500000002,
+  "s_per_frame" : 0.10314650510204082,
+  "seed" : 42,
+  "stage_s" : {
+    "condition" : 0.127172166,
+    "decoder" : 3.1110767099999994,
+    "generator" : 1.8154200410000001
+  },
+  "target" : "1280x768",
+  "thermal_after" : "0",
+  "thermal_before" : "0",
+  "window_size" : 16
+}

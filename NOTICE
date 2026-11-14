@@ -1,0 +1,9 @@
+mlx-relayvsr-swift
+Port of RelayVSR (https://github.com/kopperx/RelayVSR @ e856773350f53036d825404c9ea9228e6dffadca):
+  RelayVSR authors (Xijun Wang, Xin Li, Zirui Lang, Suhang Yao, Haoran Li, Zhibo Chen). Licensed under the Apache
+  License, Version 2.0.
+RelayVSR's reference generator is the Wan2.2 architecture (https://github.com/Wan-Video/Wan2.2) in its Diffusers form
+(https://github.com/huggingface/diffusers): both licensed under the Apache License, Version 2.0.
+
+The RelayVSR checkpoints (https://huggingface.co/kopper/RelayVSR) are Apache-2.0 from their authors and are not
+included in this repository. oracle/convert_weights.py writes the MLX-layout lane this package loads.
