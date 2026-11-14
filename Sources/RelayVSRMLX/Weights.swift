@@ -23,14 +23,19 @@ public enum RelayVSRComponent: String, CaseIterable, Sendable {
 /// Per-network compute dtypes.
 ///   • `parity` — fp32 everywhere: the gate lane against upstream's CPU-fp32 goldens. (The generator is RELEASED in
 ///     bf16, so fp32 here is an exact upcast of the same numbers.)
-///   • `production` — bf16 everywhere, upstream's own inference dtype (`--dtype bf16`).
+///   • `production` — generator bf16 (its released dtype, and upstream's inference dtype), decoder **fp16**.
+///     Upstream runs both in bf16. On MLX a bf16 decoder drifts 15–18 dB further from fp32 than torch's bf16 does
+///     (block 0 of the decoder: 39.8 dB here against 50.3 dB in torch, CPU and MPS alike; whole clip 41.2 dB against
+///     torch's 51.3 dB) — the 32 M-param network's long reductions lose more in MLX's bf16. fp16 costs nothing
+///     (72 ms/frame either way at 1280×768) and puts the whole clip at 52.2 dB of the fp32 lane, level with a fp32
+///     decoder (52.6 dB, +30 % time) and with torch's own bf16.
 public struct RelayVSRDTypes: Sendable {
     public var generator: DType, decoder: DType
     public init(generator: DType = .float32, decoder: DType = .float32) {
         self.generator = generator; self.decoder = decoder
     }
     public static let parity = RelayVSRDTypes()
-    public static let production = RelayVSRDTypes(generator: .bfloat16, decoder: .bfloat16)
+    public static let production = RelayVSRDTypes(generator: .bfloat16, decoder: .float16)
 }
 
 public enum RelayVSRLoadError: Error, CustomStringConvertible {

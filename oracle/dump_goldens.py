@@ -69,7 +69,7 @@ from refvsr_inference.checkpoints import load_checkpoints
 from refvsr_inference.models.wan.sampling import WanVSRPipeline
 from refvsr_inference.runtime.streaming import CollaborativeFrameStream, InputFrame
 del sys.modules["triton"], sys.modules["triton.language"]
-from safetensors.torch import save_file
+from safetensors.torch import load_file, save_file
 
 T, H, W, WINDOW = 9, 192, 64, 3
 G = {}
@@ -106,7 +106,9 @@ def clip():
 @torch.no_grad()
 def main(out):
     torch.manual_seed(0)
-    dev, dtype = torch.device("cpu"), torch.float32
+    # the oracle is CPU fp32; GOLDEN_DEVICE / GOLDEN_DTYPE exist only for drift studies (e.g. mps + bf16)
+    dev = torch.device(os.environ.get("GOLDEN_DEVICE", "cpu"))
+    dtype = {"fp32": torch.float32, "bf16": torch.bfloat16}[os.environ.get("GOLDEN_DTYPE", "fp32")]
     wan, flash = load_checkpoints(f"{WEIGHTS}/wan.safetensors", f"{WEIGHTS}/flash.safetensors", device=dev, dtype=dtype)
     sampler = WanVSRPipeline(
         scheduler_config={"num_train_timesteps": 1000, "shift": 5.0},
@@ -123,9 +125,14 @@ def main(out):
     kf = {"j": -1}
     orig_randn = _samp.randn_tensor
 
+    inject = os.environ.get("GOLDEN_NOISE")          # drift studies: reuse another dump's noise (torch's RNG is
+    injected = load_file(inject) if inject else None  # per device, so mps and cpu draw different numbers)
+
     def randn(shape, **k):
         n = orig_randn(shape, **k)
         kf["j"] += 1
+        if injected is not None:
+            n = injected[f"noise.{kf['j']}"].to(device=n.device, dtype=n.dtype)
         put(f"noise.{kf['j']}", n)
         return n
     _samp.randn_tensor = randn
@@ -218,8 +225,8 @@ def main(out):
         n += 1
         print(f"frame {r.index} window [{r.window_start}, {r.window_end}]", flush=True)
     assert n == T and list(stream.last_keyframe_indices) == [0, 2, 4, 6, 8], list(stream.last_keyframe_indices)
-    meta = {"frames": str(T), "lr": f"{W}x{H}", "window_size": str(WINDOW), "seed": "42", "dtype": "fp32",
-            "device": "cpu", "torch": torch.__version__, "upstream": "kopperx/RelayVSR@e856773",
+    meta = {"frames": str(T), "lr": f"{W}x{H}", "window_size": str(WINDOW), "seed": "42", "dtype": os.environ.get("GOLDEN_DTYPE", "fp32"),
+            "device": str(dev), "torch": torch.__version__, "upstream": "kopperx/RelayVSR@e856773",
             "keyframes": "0,2,4,6,8"}
     save_file(G, out, metadata=meta)
     print(f"{len(G)} tensors → {out}")

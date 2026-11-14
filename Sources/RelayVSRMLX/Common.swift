@@ -5,8 +5,11 @@ import Foundation
 import MLX
 import MLXNN
 
-/// `torch.nn.RMSNorm(dim, eps)`: x · rsqrt(mean(x², −1) + eps) · weight, in the input's own dtype (upstream does
-/// not upcast: under bf16 the norm runs in bf16).
+/// `torch.nn.RMSNorm(dim, eps)`: x · rsqrt(mean(x², −1) + eps) · weight.
+///
+/// Upstream evaluates it in the input's own dtype (bf16 under `--dtype bf16`). Here the reduction runs in fp32 and
+/// the result is cast back: identical in the fp32 lane, and in a half-precision lane it removes the one place MLX
+/// loses more than torch does — a mean of squares over 512–3072 values accumulated in 8 mantissa bits.
 final class TorchRMSNorm: Module, UnaryLayer {
     let weight: MLXArray
     let eps: Float
@@ -15,8 +18,8 @@ final class TorchRMSNorm: Module, UnaryLayer {
         self.eps = eps
     }
     func callAsFunction(_ x: MLXArray) -> MLXArray {
-        let ms = (x * x).mean(axis: -1, keepDims: true)
-        return x * rsqrt(ms + MLXArray(eps).asType(x.dtype)) * weight.asType(x.dtype)
+        let xf = x.asType(.float32)
+        return (xf * rsqrt((xf * xf).mean(axis: -1, keepDims: true) + eps) * weight.asType(.float32)).asType(x.dtype)
     }
 }
 

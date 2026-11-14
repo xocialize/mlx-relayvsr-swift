@@ -1,4 +1,5 @@
 golden: kopperx/RelayVSR@e856773  64x192 × 9 frames, window 3, keyframes 0,2,4,6,8, torch 2.15.0
+compute dtypes: generator float32, decoder float32
 resamplers
   bicubic ×4 maxAbs 2.384e-07  ref|max| 1.183e+00  rel 2.016e-07  psnr  150.2 dB
 generator constants

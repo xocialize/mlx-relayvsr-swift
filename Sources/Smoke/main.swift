@@ -1,8 +1,10 @@
 // relayvsr-smoke — parity gates and runners for the RelayVSR MLX port.
 //   relayvsr-smoke s0 <weightsDir>                                   key contract (verify .all) + parameter counts
 //   relayvsr-smoke s1 <weightsDir> <golden.safetensors> [--rel 1e-4] [--chain-rel 1e-3] [--e2e] [--gpu [--tf32]]
-//   relayvsr-smoke run <lrFramesDir> <outDir> <weightsDir> [--dtype bf16|fp32] [--dec-dtype bf16|fp32]
-//                      [--window 16] [--limit N] [--seed S] [--profile] [--cache-mb N]
+//                     [--dtype bf16] [--dec-dtype bf16]      (a bf16 lane against the fp32 goldens: a drift study)
+//   relayvsr-smoke run <lrFramesDir> <outDir> <weightsDir> [--dtype bf16|fp32] [--dec-dtype fp16|bf16|fp32]
+//                      [--window 16] [--limit N] [--seed S] [--profile] [--cache-mb N] [--repeat N]
+//                      (defaults: generator bf16, decoder fp16 — the production lane)
 import Foundation
 import MLX
 import RelayVSRMLX
@@ -30,7 +32,10 @@ do {
         try gateS1(weights: URL(fileURLWithPath: args[1]), golden: URL(fileURLWithPath: args[2]),
                    relMax: flag("--rel", args).flatMap(Float.init) ?? 1e-4,
                    chainRelMax: flag("--chain-rel", args).flatMap(Float.init) ?? 1e-3,
-                   e2e: args.contains("--e2e"), gpu: args.contains("--gpu"))
+                   e2e: args.contains("--e2e"), gpu: args.contains("--gpu"),
+                   dtypes: RelayVSRDTypes(
+                       generator: flag("--dtype", args) == "bf16" ? .bfloat16 : .float32,
+                       decoder: ["bf16": DType.bfloat16, "fp16": .float16][flag("--dec-dtype", args) ?? ""] ?? .float32))
     case "run":
         func dt(_ f: String, _ d: DType) -> DType {
             switch flag(f, args) { case "bf16": .bfloat16; case "fp16": .float16; case "fp32": .float32; default: d }
@@ -40,7 +45,7 @@ do {
         if let w = flag("--window", args).flatMap(Int.init) { opts.windowSize = w }
         if let s = flag("--seed", args).flatMap(UInt64.init) { opts.seed = s }
         try runFrames(inDir: args[1], outDir: args[2], weights: URL(fileURLWithPath: args[3]),
-                      dtypes: RelayVSRDTypes(generator: gen, decoder: dt("--dec-dtype", gen)),
+                      dtypes: RelayVSRDTypes(generator: gen, decoder: dt("--dec-dtype", gen == .bfloat16 ? .float16 : gen)),
                       limit: flag("--limit", args).flatMap(Int.init), options: opts,
                       profile: args.contains("--profile"), cacheMB: flag("--cache-mb", args).flatMap(Int.init),
                       repeats: flag("--repeat", args).flatMap(Int.init) ?? 1)

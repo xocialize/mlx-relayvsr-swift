@@ -60,7 +60,8 @@ func gateS0(weights: URL) throws {
 ///   fifth wraps the 4-slot K/V ring — and every reference latent) · decoder reference priming · decoder frames of
 ///   intervals 0 and 1 from the golden latents · and, with `--e2e`, the whole stream from (lr, noise).
 /// `relMax` gates isolated components; `chainRelMax` gates anything behind the 30-block generator.
-func gateS1(weights: URL, golden: URL, relMax: Float, chainRelMax: Float, e2e: Bool, gpu: Bool) throws {
+func gateS1(weights: URL, golden: URL, relMax: Float, chainRelMax: Float, e2e: Bool, gpu: Bool,
+            dtypes: RelayVSRDTypes = .parity) throws {
     try Device.withDefaultDevice(gpu ? Device(.gpu) : Device(.cpu)) {
         let (g, meta) = try loadArraysAndMetadata(url: golden)
         func G(_ k: String) throws -> MLXArray {
@@ -70,7 +71,8 @@ func gateS1(weights: URL, golden: URL, relMax: Float, chainRelMax: Float, e2e: B
         note("golden: \(meta["upstream"] ?? "?")  \(meta["lr"] ?? "?") × \(meta["frames"] ?? "?") frames, "
              + "window \(meta["window_size"] ?? "?"), keyframes \(meta["keyframes"] ?? "?"), torch \(meta["torch"] ?? "?")")
         let window = Int(meta["window_size"] ?? "") ?? 3
-        let pipe = try RelayVSRPipeline.load(directory: weights, dtypes: .parity)
+        let pipe = try RelayVSRPipeline.load(directory: weights, dtypes: dtypes)
+        note("compute dtypes: generator \(dtypes.generator), decoder \(dtypes.decoder)")
         let gen = pipe.generator, dec = pipe.decoder
         var rep = GateReport()
         let lr = try G("lr")
