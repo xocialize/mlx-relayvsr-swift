@@ -31,9 +31,15 @@ super-resolves **every** frame from the low-resolution frame and the two referen
 
 ## Weights
 
+[`mlx-community/RelayVSR-bf16`](https://huggingface.co/mlx-community/RelayVSR-bf16) (10.2 GB, Apache-2.0): the
+generator in its released bf16 and the small network in its released fp32. Through MLXEngine the package downloads it
+on first use. To fetch or rebuild it yourself:
+
 ```
+hf download mlx-community/RelayVSR-bf16 --local-dir <laneDir>
+# or, from the upstream checkpoints:
 hf download kopper/RelayVSR flash.safetensors wan.safetensors
-python oracle/convert_weights.py <that snapshot> <laneDir>          # 10.2 GB: generator bf16, decoder fp32
+python oracle/convert_weights.py <that snapshot> <laneDir> && python oracle/model_card.py <laneDir>
 ```
 
 Keys are upstream's verbatim; only conv weights are moved to channels-last.

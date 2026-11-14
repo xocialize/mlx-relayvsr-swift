@@ -6,4 +6,5 @@ RelayVSR's reference generator is the Wan2.2 architecture (https://github.com/Wa
 (https://github.com/huggingface/diffusers): both licensed under the Apache License, Version 2.0.
 
 The RelayVSR checkpoints (https://huggingface.co/kopper/RelayVSR) are Apache-2.0 from their authors and are not
-included in this repository. oracle/convert_weights.py writes the MLX-layout lane this package loads.
+included in this repository. The MLX-layout conversion (oracle/convert_weights.py) is published at
+https://huggingface.co/mlx-community/RelayVSR-bf16.
