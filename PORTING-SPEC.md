@@ -12,7 +12,7 @@ Why it was ported, and how it compares with SeedVR2 and FlashVSR: `mlxengine-for
 | S1 components | sub-op taps against upstream's CPU-fp32 goldens, each component fed golden inputs | **PASS** — every isolated tap rel ≤ 3e-5 (CPU and GPU, fp32) |
 | E2E | the whole stream from (LR frames, injected noise) | **PASS** — every frame ≥ 120.5 dB (CPU), ≥ 122.7 dB (GPU), fp32 |
 | S6 production dtypes | generator bf16 + decoder fp16 against the fp32 lane | 49–53 dB on every frame of the ×4 cells — upstream's own bf16 is 49.7–52.5 dB |
-| S7 engine wrap | `MLXRelayVSR` through the real `MLXServeEngine`; MAT / licence / FIT / CAN suites | **PASS** — 15 package tests; ×4 and ×2 clips decode, every frame kept |
+| S7 engine wrap | `MLXRelayVSR` through the real `MLXServeEngine`; MAT / licence / FIT / CAN suites | **PASS** — 15 package tests; ×4 and ×2 clips decode, every frame kept; fresh-store download verified |
 
 Reports: `oracle/reports/s1_cpu_fp32.log`, `s1_gpu_fp32.log`, `s1_gpu_production_drift.log`, `dump_goldens.log`.
 
@@ -129,14 +129,22 @@ Through the engine, decode and HEVC encode included: 132 ms/frame at 1280×768, 
 Weights are 10.2 GB of that in the bf16 lane. Memory does not grow with clip length. The declared footprints
 (`RelayVSRUpscalePackage.footprints`) are these points with 1.2× headroom; the ceiling is 1920×1088.
 
+## Published (2026-11-14)
+
+- Code: https://github.com/xocialize/mlx-relayvsr-swift (public, Apache-2.0), tag `v0.1.0`.
+- Weights: https://huggingface.co/mlx-community/RelayVSR-bf16 (10.2 GB) — `oracle/convert_weights.py` +
+  `oracle/model_card.py` output, uploaded as is.
+- Fresh-machine path, through the real engine: `relayvsr-smoke engine <clip> <out.mp4> --store <empty dir>` reported the
+  lane missing, the engine materialized exactly the four declared files into `models--mlx-community--RelayVSR-bf16/`
+  (plus its own `mlx-package.json` marker), loaded and ran: 49 frames at 1280×768, byte-identical to the run from the
+  local lane (1,782,165 bytes), 242 s including the 10.2 GB download, peak 14.34 GB.
+
 ## Open items
 
 Bridge: receipt [[AB-R-0866]] (this port), [[AB-R-0863]] (the spike), lesson [[AB-L-0340]] (bf16 reductions), tasks
 [[AB-T-0486]] (item 3) and [[AB-T-0487]] (items 1 and 7).
 
-1. **Publish the lane.** `RelayVSRConfiguration.repo` names `mlx-community/RelayVSR-bf16`, which does not exist yet.
-   Until it does, the engine's fresh-machine download path is untested and hosts must pass `weightsDirectory` or hold
-   the lane in their model store.
+1. ~~Publish the lane.~~ **Done 2026-11-14** — see "Published" below.
 2. **CUDA oracle.** Gate against a real CUDA run with the Triton kernels (a Runpod GPU for an hour or two).
 3. **A windowed attention kernel for the decoder.** Dense masked attention is exact and fine to ~1 Mpx; at 1080p it
    is 70 % of the run and at 4K output the mask alone would be ~4 GB and the score matrices several times that. The window is at most 2 × 2,304 +
