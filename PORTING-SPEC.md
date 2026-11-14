@@ -139,6 +139,11 @@ Weights are 10.2 GB of that in the bf16 lane. Memory does not grow with clip len
   (plus its own `mlx-package.json` marker), loaded and ran: 49 frames at 1280×768, byte-identical to the run from the
   local lane (1,782,165 bytes), 242 s including the 10.2 GB download, peak 14.34 GB.
 
+- Dependencies exercised: developed on mlx-swift 0.32.3 + mlx-engine-swift 0.74.0; a clean clone of the public repo
+  resolves mlx-swift 0.33.0 + mlx-engine-swift 0.78.0, builds, and passes S1 + E2E on the GPU (worst frame 122.9 dB).
+  SwiftPM prints a "conflicting identity for mlx-swift" warning there: the engine names the fleet's fork and this
+  package names ml-explore's URL, which the engine's manifest documents as supported (a root declaration wins).
+
 ## Open items
 
 Bridge: receipt [[AB-R-0866]] (this port), [[AB-R-0863]] (the spike), lesson [[AB-L-0340]] (bf16 reductions), tasks
