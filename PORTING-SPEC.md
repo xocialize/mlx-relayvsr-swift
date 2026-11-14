@@ -131,6 +131,9 @@ Weights are 10.2 GB of that in the bf16 lane. Memory does not grow with clip len
 
 ## Open items
 
+Bridge: receipt [[AB-R-0866]] (this port), [[AB-R-0863]] (the spike), lesson [[AB-L-0340]] (bf16 reductions), tasks
+[[AB-T-0486]] (item 3) and [[AB-T-0487]] (items 1 and 7).
+
 1. **Publish the lane.** `RelayVSRConfiguration.repo` names `mlx-community/RelayVSR-bf16`, which does not exist yet.
    Until it does, the engine's fresh-machine download path is untested and hosts must pass `weightsDirectory` or hold
    the lane in their model store.
