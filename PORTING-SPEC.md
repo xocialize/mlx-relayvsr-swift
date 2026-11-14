@@ -144,7 +144,7 @@ Weights are 10.2 GB of that in the bf16 lane. Memory does not grow with clip len
 Bridge: receipt [[AB-R-0866]] (this port), [[AB-R-0863]] (the spike), lesson [[AB-L-0340]] (bf16 reductions), tasks
 [[AB-T-0486]] (item 3) and [[AB-T-0487]] (items 1 and 7).
 
-1. ~~Publish the lane.~~ **Done 2026-11-14** — see "Published" below.
+1. ~~Publish the lane.~~ **Done 2026-11-14** — see "Published" above.
 2. **CUDA oracle.** Gate against a real CUDA run with the Triton kernels (a Runpod GPU for an hour or two).
 3. **A windowed attention kernel for the decoder.** Dense masked attention is exact and fine to ~1 Mpx; at 1080p it
    is 70 % of the run and at 4K output the mask alone would be ~4 GB and the score matrices several times that. The window is at most 2 × 2,304 +
